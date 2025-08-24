@@ -1,0 +1,22 @@
+# accelerate config for single-node, multi-GPU training
+compute_environment: LOCAL_MACHINE
+distributed_type: FSDP # Fully Sharded Data Parallelism for large models
+downcast_bf16: 'no'
+fsdp_config:
+  fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP
+  fsdp_backward_prefetch: BACKWARD_PRE
+  fsdp_cpu_ram_efficient_loading: true
+  fsdp_forward_prefetch: false
+  fsdp_sharding_strategy: 1 # FULL_SHARD
+  fsdp_state_dict_type: SHARDED_STATE_DICT
+  fsdp_sync_module_states: true
+  fsdp_use_orig_params: true
+machine_rank: 0
+main_training_function: main
+mixed_precision: fp16 # Using fp16 for performance
+num_machines: 1
+num_processes: 8 # Set to the number of GPUs
+rdzv_backend: static
+same_network: true
+tpu_env: []
+use_cpu: false

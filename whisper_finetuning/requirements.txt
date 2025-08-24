@@ -1,0 +1,15 @@
+# Core ML/DL Framework
+torch
+
+# Hugging Face ecosystem
+transformers>=4.38.0
+datasets
+accelerate
+evaluate
+peft
+bitsandbytes
+
+# Metrics and audio processing
+jiwer
+soundfile
+librosa
