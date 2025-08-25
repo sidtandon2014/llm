@@ -1,6 +1,6 @@
 import torch
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
-from peft import prepare_model_for_kbit_training, LoraConfig, get_peft_model
+# from peft import prepare_model_for_kbit_training, LoraConfig, get_peft_model
 
 def load_model_and_processor(model_args):
     """
@@ -26,14 +26,14 @@ def load_model_and_processor(model_args):
         model = prepare_model_for_kbit_training(model)
 
     # Configure LoRA
-    config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        target_modules=["q_proj", "v_proj"],
-        lora_dropout=0.05,
-        bias="none"
-    )
-    model = get_peft_model(model, config)
+    # config = LoraConfig(
+    #     r=8,
+    #     lora_alpha=16,
+    #     target_modules=["q_proj", "v_proj"],
+    #     lora_dropout=0.05,
+    #     bias="none"
+    # )
+    # model = get_peft_model(model, config)
     model.print_trainable_parameters()
 
     if model_args.freeze_feature_encoder:

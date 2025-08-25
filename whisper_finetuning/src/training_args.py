@@ -8,6 +8,7 @@ class ModelArguments:
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
     """
     model_name_or_path: str = field(
+        default="openai/whisper-large-v3",
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
     config_name: Optional[str] = field(
@@ -20,19 +21,15 @@ class ModelArguments:
         default=None, metadata={"help": "feature extractor name or path if not the same as model_name"}
     )
     cache_dir: Optional[str] = field(
-        default=None,
+        default="./cache/",
         metadata={"help": "Where to store the pretrained models downloaded from huggingface.co"},
     )
     use_fast_tokenizer: bool = field(
         default=True,
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
-    model_revision: str = field(
-        default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
-    )
     use_auth_token: bool = field(
-        default=False,
+        default=True,
         metadata={
             "help": "Will use the token generated when running `transformers-cli login` (necessary to use this script "
             "with private models)."
@@ -55,17 +52,14 @@ class DataTrainingArguments:
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
     dataset_name: str = field(
-        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
-    )
-    dataset_config_name: Optional[str] = field(
-        default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
+        default="mozilla-foundation/common_voice_11_0", metadata={"help": "The name of the dataset to use (via the datasets library)."}
     )
     text_column: str = field(
         default="sentence",
         metadata={"help": "The name of the column in the datasets containing the full text of the transcription."},
     )
     dataset_cache_dir: Optional[str] = field(
-        default=None, metadata={"help": "Path to cache directory for saving and loading datasets"}
+        default="./cache/", metadata={"help": "Path to cache directory for saving and loading datasets"}
     )
     overwrite_cache: bool = field(
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
@@ -108,9 +102,9 @@ class DataTrainingArguments:
         },
     )
     language: str = field(
-        default=None,
+        default="English",
         metadata={
-            "help": "Language for multilingual fine-tuning. This argument should be set for multilingual fine-tuning "
+            "help": "Language for fine-tuning. This argument should be set for multilingual fine-tuning "
             "only. For English speech recognition, it should be set to `en`."
         },
     )

@@ -1,9 +1,11 @@
 # Core ML/DL Framework
-torch
+--extra-index-url=https://download.pytorch.org/whl/cu126
+torch==2.6
+torchaudio==2.6.0
 
 # Hugging Face ecosystem
 transformers>=4.38.0
-datasets
+datasets==3.4.0
 accelerate
 evaluate
 peft
