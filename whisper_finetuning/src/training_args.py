@@ -21,7 +21,7 @@ class ModelArguments:
         default=None, metadata={"help": "feature extractor name or path if not the same as model_name"}
     )
     cache_dir: Optional[str] = field(
-        default="./cache/",
+        default="./cache/model/",
         metadata={"help": "Where to store the pretrained models downloaded from huggingface.co"},
     )
     use_fast_tokenizer: bool = field(
@@ -67,11 +67,14 @@ class DataTrainingArguments:
     processed_dataset_dir: Optional[str] = field(
         default="./cache/processed_common_voice/", metadata={"help": "Path to processed directory for saving and loading datasets"}
     )
+    vectorized_dataset_dir: Optional[str] = field(
+        default="./cache/vectorized_dataset/", metadata={"help": "Path to processed directory for saving and loading datasets"}
+    )
     overwrite_cache: bool = field(
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
     )
     preprocessing_num_workers: Optional[int] = field(
-        default=None,
+        default=40,
         metadata={"help": "The number of processes to use for the preprocessing."},
     )
     max_train_samples: Optional[int] = field(
@@ -102,26 +105,25 @@ class DataTrainingArguments:
     )
     sampling_rate:int = field(
         default=16000,
-        metadata="Sampling rate"
+        metadata={"help": "The sampling rate of the audio data. Defaults to 16000Hz (required by Whisper)."}
     )
     preprocessing_only: bool = field(
         default=False,
         metadata={
             "help": "Only run the preprocessing script to generate the cached dataset and do not run training. "
-            "Used for debugging the preprocessing script."
+            "Useful for debugging the data preparation step."
         },
     )
     language: str = field(
-        default="English",
+        default="english",
         metadata={
-            "help": "Language for fine-tuning. This argument should be set for multilingual fine-tuning "
-            "only. For English speech recognition, it should be set to `en`."
+            "help": "Language of the dataset. Important for models that support multiple languages. "
+            "For English, set to `en`. See the model card for supported languages."
         },
     )
     task: str = field(
         default="transcribe",
         metadata={
-            "help": "Task, either `transcribe` or `translate`. For multilingual fine-tuning, this argument should be "
-            "set to `transcribe`."
+            "help": "Task to perform: 'transcribe' for speech-to-text or 'translate' to translate to English."
         },
     )

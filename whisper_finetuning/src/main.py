@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
@@ -12,6 +13,7 @@ from transformers import (
     Seq2SeqTrainingArguments,
     WhisperProcessor,
 )
+from transformers.trainer_utils import get_last_checkpoint
 
 from training_args import DataTrainingArguments, ModelArguments
 from model_utils import load_model_and_processor
@@ -48,8 +50,9 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 
 def main():
     # 1. Parse arguments
+    # The parser now accepts all three argument classes to parse from the JSON file.
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
 
     # 2. Setup logging
     logging.basicConfig(
@@ -61,15 +64,17 @@ def main():
     logger.setLevel(log_level)
 
     # 3. Load model and processor
-    processor, model = load_model_and_processor(model_args)
+    processor, model = load_model_and_processor(model_args, data_args)
     
     # 4. Set language and task for generation
     model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(language=data_args.language, task=data_args.task)
     model.config.suppress_tokens = []
 
     # 5. Prepare dataset
-    train_dataset, eval_dataset = prepare_dataset(data_args, processor)
-
+    vectorized_datasets = prepare_dataset(data_args, processor)
+    train_dataset = vectorized_datasets["train"]
+    eval_dataset = vectorized_datasets["test"]
+    
     # 6. Define data collator
     data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
@@ -78,7 +83,7 @@ def main():
 
     def compute_metrics(pred):
         pred_ids = pred.predictions
-        label_ids = pred.label_ids
+        label_ids = pred.label_ids.copy()
 
         # replace -100 with the pad_token_id
         label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
@@ -99,12 +104,13 @@ def main():
         eval_dataset=eval_dataset,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
-        tokenizer=processor.feature_extractor,
+        tokenizer=processor,
     )
 
     # 9. Start training
     if training_args.do_train:
-        train_result = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
+        last_checkpoint = get_last_checkpoint(training_args.output_dir)
+        train_result = trainer.train(resume_from_checkpoint=last_checkpoint)
         trainer.save_model()
 
         metrics = train_result.metrics
