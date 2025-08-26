@@ -28,7 +28,8 @@ def load_model_and_processor(model_args, data_args):
     model.config.use_cache = False
     # set language and task for generation and re-enable cache
     model.generate = partial(
-        model.generate, language=data_args.language
+        model.generate
+        , language=data_args.language
         , task=data_args.task
         , use_cache=True
         , forced_decoder_ids = None

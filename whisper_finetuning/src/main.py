@@ -67,8 +67,8 @@ def main():
     processor, model = load_model_and_processor(model_args, data_args)
     
     # 4. Set language and task for generation
-    model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(language=data_args.language, task=data_args.task)
-    model.config.suppress_tokens = []
+    # model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(language=data_args.language, task=data_args.task)
+    # model.config.suppress_tokens = []
 
     # 5. Prepare dataset
     vectorized_datasets = prepare_dataset(data_args, processor)
