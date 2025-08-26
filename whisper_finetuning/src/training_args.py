@@ -54,12 +54,18 @@ class DataTrainingArguments:
     dataset_name: str = field(
         default="mozilla-foundation/common_voice_11_0", metadata={"help": "The name of the dataset to use (via the datasets library)."}
     )
+    dataset_config_name: Optional[str] = field(
+        default='en', metadata={"help": "The configuration name of the dataset to use (via the datasets library). For english this will be 'en'"}
+    )
     text_column: str = field(
         default="sentence",
         metadata={"help": "The name of the column in the datasets containing the full text of the transcription."},
     )
     dataset_cache_dir: Optional[str] = field(
         default="./cache/", metadata={"help": "Path to cache directory for saving and loading datasets"}
+    )
+    processed_dataset_dir: Optional[str] = field(
+        default="./cache/processed_common_voice/", metadata={"help": "Path to processed directory for saving and loading datasets"}
     )
     overwrite_cache: bool = field(
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
@@ -69,14 +75,14 @@ class DataTrainingArguments:
         metadata={"help": "The number of processes to use for the preprocessing."},
     )
     max_train_samples: Optional[int] = field(
-        default=None,
+        default=100,
         metadata={
             "help": "For debugging purposes or quicker training, truncate the number of training examples to this "
             "value if set."
         },
     )
     max_eval_samples: Optional[int] = field(
-        default=None,
+        default=10,
         metadata={
             "help": "For debugging purposes or quicker training, truncate the number of evaluation examples to this "
             "value if set."
@@ -93,6 +99,10 @@ class DataTrainingArguments:
     min_duration_in_seconds: float = field(
         default=0.0,
         metadata={"help": "Filter audio files that are shorter than `min_duration_in_seconds` seconds"},
+    )
+    sampling_rate:int = field(
+        default=16000,
+        metadata="Sampling rate"
     )
     preprocessing_only: bool = field(
         default=False,
