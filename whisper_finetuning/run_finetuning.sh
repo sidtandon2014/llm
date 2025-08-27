@@ -8,4 +8,4 @@
 
 export WANDB_DISABLED=true
 
-accelerate launch --config_file accelerate_config.yaml src/main.py src/training_args.json
+accelerate launch --config_file deep_speed_config.yaml src/main.py src/training_args.json

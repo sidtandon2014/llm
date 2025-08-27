@@ -14,12 +14,14 @@ from transformers import (
     WhisperProcessor,
 )
 from transformers.trainer_utils import get_last_checkpoint
+import torch.distributed as dist
 
 from training_args import DataTrainingArguments, ModelArguments
 from model_utils import load_model_and_processor
 from data_preparation import prepare_dataset
 
 logger = logging.getLogger(__name__)
+MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT: int = 100000
 
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
@@ -30,7 +32,8 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         # first treat the audio inputs by simply returning torch tensors
         input_features = [{"input_features": feature["input_features"]} for feature in features]
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
-
+        batch["input_features"] = torch.squeeze(batch["input_features"])
+        
         # get the tokenized label sequences
         label_features = [{"input_ids": feature["labels"]} for feature in features]
         # pad the labels to max length
@@ -45,11 +48,19 @@ class DataCollatorSpeechSeq2SeqWithPadding:
             labels = labels[:, 1:]
 
         batch["labels"] = labels
-
+        
+        if dist.is_initialized():
+            rank = dist.get_rank()
+        else:
+            rank = 0
+        
+        if rank ==0:
+            logger.debug(f"Shape of input_features: {batch['input_features'].shape}")
+            logger.debug(f"shape of labels: {batch['labels'].shape}")
+            
         return batch
 
 def main():
-    print(sys.argv[1])
     # 1. Parse arguments
     # The parser now accepts all three argument classes to parse from the JSON file.
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
@@ -59,7 +70,8 @@ def main():
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)],
+        handlers=[logging.StreamHandler(sys.stdout)
+                 ,logging.FileHandler(f"{__name__}.log")],
     )
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
@@ -112,14 +124,21 @@ def main():
     if training_args.do_train:
         trainer.accelerator.print(f"{trainer.model}")
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
+        
+        # For Memory profiling
+        torch.cuda.memory._record_memory_history(max_entries=100000)
+        
+        # Train model
         train_result = trainer.train(resume_from_checkpoint=last_checkpoint)
+        
+        # Dump memory profiling snapshot
+        torch.cuda.memory._dump_snapshot("profile.pkl")
+        # Stop memroy profiling
+        torch.cuda.memory._record_memory_history(enabled=None)
+        
         trainer.save_model()
 
         metrics = train_result.metrics
-        max_train_samples = (
-            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
-        )
-        metrics["train_samples"] = min(max_train_samples, len(train_dataset))
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
@@ -132,10 +151,6 @@ def main():
             max_length=training_args.generation_max_length,
             num_beams=training_args.generation_num_beams,
         )
-        max_eval_samples = (
-            data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
-        )
-        metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 

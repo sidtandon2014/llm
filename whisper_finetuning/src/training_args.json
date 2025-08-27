@@ -6,14 +6,14 @@
     "learning_rate":1e-5,
     "lr_scheduler_type":"constant_with_warmup",
     "do_train":true,
-    //"num_train_epochs":10,
-    "max_steps":1 
+    "max_steps":1,
     "bf16":true,
     "bf16_full_eval":true,
     "gradient_checkpointing":true,
     "save_strategy":"steps",
     "save_steps":100,
     "save_total_limit":5,
+    "accelerator_config":{"dispatch_batches":false},
 
     "warmup_ratio":0.03,
     "eval_strategy":"steps",
@@ -21,9 +21,9 @@
     "predict_with_generate":true,
     "generation_max_length":225,
     "eval_steps":100,
-    "do_eval":true
+    "do_eval":true,
 
-    "log_level":"info",
+    "log_level":"debug",
     "logging_strategy":"steps",
     "logging_steps":50,
     "report_to":["tensorboard"],

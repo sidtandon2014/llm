@@ -1,5 +1,5 @@
 # Core ML/DL Framework
---extra-index-url=https://download.pytorch.org/whl/cu126
+--extra-index-url=https://download.pytorch.org/whl/cu118
 torch==2.6
 torchaudio==2.6.0
 
@@ -10,7 +10,7 @@ accelerate
 evaluate
 peft
 bitsandbytes
-deepspeed=0.17.5
+deepspeed==0.17.5
 
 # Metrics and audio processing
 jiwer
@@ -19,3 +19,4 @@ librosa
 
 # Environment related
 python-dotenv
+tensorboardX==2.6.4

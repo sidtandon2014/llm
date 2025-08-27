@@ -47,7 +47,7 @@ def load_model_and_processor(model_args, data_args):
     #     bias="none"
     # )
     # model = get_peft_model(model, config)
-    model.print_trainable_parameters()
+    # model.print_trainable_parameters()
 
     # if model_args.freeze_feature_encoder:
     #     model.freeze_feature_encoder()

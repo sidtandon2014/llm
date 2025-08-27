@@ -58,7 +58,7 @@ def prepare_dataset(data_args, processor):
     Loads and preprocesses the dataset for Whisper fine-tuning.
     """
     # 1. Load Dataset
-    processed_datasets = load_dataset(data_args.processed_dataset_path, streaming=True)
+    processed_datasets = load_dataset(data_args.processed_dataset_dir, streaming=True)
 
     # Select few samples for testing
 #     if data_args.max_train_samples is not None:
@@ -88,11 +88,15 @@ def prepare_dataset(data_args, processor):
     # Apply preprocessing
     vectorized_datasets = processed_datasets.map(
         prepare_sample,
-        remove_columns=processed_datasets.column_names,
+        remove_columns=[data_args.audio_column_name,data_args.text_column] ,
+        
+        # Below parameters for dataset
+        # In case of streaming this should be commented out
+        
         # num_proc=data_args.preprocessing_num_workers,
         # batched=True,
         # batch_size=1000,
-        desc="preprocess dataset",
+        # desc="preprocess dataset",
     )
 
     # vectorized_datasets.save_to_disk(data_args.vectorized_dataset_dir)
