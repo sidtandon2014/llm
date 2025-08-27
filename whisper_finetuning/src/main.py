@@ -49,11 +49,12 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         return batch
 
 def main():
+    print(sys.argv[1])
     # 1. Parse arguments
     # The parser now accepts all three argument classes to parse from the JSON file.
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, Seq2SeqTrainingArguments))
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
-
+    
     # 2. Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -109,6 +110,7 @@ def main():
 
     # 9. Start training
     if training_args.do_train:
+        trainer.accelerator.print(f"{trainer.model}")
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         train_result = trainer.train(resume_from_checkpoint=last_checkpoint)
         trainer.save_model()

@@ -5,7 +5,9 @@
     "gradient_accumulation_steps":1,  
     "learning_rate":1e-5,
     "lr_scheduler_type":"constant_with_warmup",
-    "num_train_epochs":10,
+    "do_train":true,
+    //"num_train_epochs":10,
+    "max_steps":1 
     "bf16":true,
     "bf16_full_eval":true,
     "gradient_checkpointing":true,
@@ -18,7 +20,8 @@
     "per_device_eval_batch_size":16,
     "predict_with_generate":true,
     "generation_max_length":225,
-    "eval_steps":500,
+    "eval_steps":100,
+    "do_eval":true
 
     "log_level":"info",
     "logging_strategy":"steps",

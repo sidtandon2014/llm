@@ -10,8 +10,12 @@ accelerate
 evaluate
 peft
 bitsandbytes
+deepspeed=0.17.5
 
 # Metrics and audio processing
 jiwer
 soundfile
 librosa
+
+# Environment related
+python-dotenv
