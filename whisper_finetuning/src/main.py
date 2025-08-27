@@ -84,9 +84,9 @@ def main():
     # model.config.suppress_tokens = []
 
     # 5. Prepare dataset
-    vectorized_datasets = prepare_dataset(data_args, processor)
-    train_dataset = vectorized_datasets["train"]
-    eval_dataset = vectorized_datasets["test"]
+    train_dataset,eval_dataset  = prepare_dataset(data_args, processor)
+    # train_dataset = vectorized_datasets["train"]
+    # eval_dataset = vectorized_datasets["test"]
     
     # 6. Define data collator
     data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)

@@ -5,10 +5,10 @@ deepspeed_config:
   gradient_clipping: 1.0
   offload_optimizer_device: cpu
   offload_param_device: cpu
-  zero3_init_flag: false
-  zero_stage: 2
-  tensor_parallel:
-    tp_size: 4
+  zero3_init_flag: true
+  zero_stage: 3
+  # tensor_parallel:
+  #   tp_size: 4
 distributed_type: DEEPSPEED
 downcast_bf16: 'no'
 enable_cpu_affinity: false

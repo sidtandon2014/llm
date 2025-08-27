@@ -1,4 +1,4 @@
-from datasets import load_dataset, DatasetDict, Audio
+from datasets import load_dataset, DatasetDict, Audio, load_from_disk
 import os
 
 from dotenv import load_dotenv
@@ -58,15 +58,10 @@ def prepare_dataset(data_args, processor):
     Loads and preprocesses the dataset for Whisper fine-tuning.
     """
     # 1. Load Dataset
-    processed_datasets = load_dataset(data_args.processed_dataset_dir, streaming=True)
+    processed_datasets = load_from_disk(data_args.processed_dataset_dir)
+    train_dataset = processed_datasets["train"].to_iterable_dataset()
+    test_dataset= processed_datasets["test"].to_iterable_dataset()
 
-    # Select few samples for testing
-#     if data_args.max_train_samples is not None:
-#         processed_datasets["train"] = processed_datasets["train"].select(range(data_args.max_train_samples))
-
-#     if data_args.max_eval_samples is not None:
-#         processed_datasets["test"] = processed_datasets["test"].select(range(data_args.max_eval_samples))
-    
     # Preprocessing function
     def prepare_sample(batch):
         batch_audio = batch[data_args.audio_column_name]
@@ -86,18 +81,14 @@ def prepare_dataset(data_args, processor):
         return batch
 
     # Apply preprocessing
-    vectorized_datasets = processed_datasets.map(
+    train_dataset = train_dataset.map(
         prepare_sample,
         remove_columns=[data_args.audio_column_name,data_args.text_column] ,
-        
-        # Below parameters for dataset
-        # In case of streaming this should be commented out
-        
-        # num_proc=data_args.preprocessing_num_workers,
-        # batched=True,
-        # batch_size=1000,
-        # desc="preprocess dataset",
     )
 
+    test_dataset = test_dataset.map(
+        prepare_sample,
+        remove_columns=[data_args.audio_column_name,data_args.text_column] ,
+    )
     # vectorized_datasets.save_to_disk(data_args.vectorized_dataset_dir)
-    return vectorized_datasets
+    return train_dataset, test_dataset

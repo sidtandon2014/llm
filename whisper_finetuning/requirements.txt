@@ -4,7 +4,7 @@ torch==2.6
 torchaudio==2.6.0
 
 # Hugging Face ecosystem
-transformers>=4.38.0
+transformers==4.52.0
 datasets==3.4.0
 accelerate
 evaluate
