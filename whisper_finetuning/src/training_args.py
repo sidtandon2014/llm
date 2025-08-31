@@ -127,3 +127,15 @@ class DataTrainingArguments:
             "help": "Task to perform: 'transcribe' for speech-to-text or 'translate' to translate to English."
         },
     )
+    train_max_tokens_per_sentence: int = field(
+        default=40,
+        metadata={
+            "help": "MAximum tokens in a sentence"
+        },
+    )
+    eval_max_tokens_per_sentence: int = field(
+        default=48,
+        metadata={
+            "help": "MAximum tokens in a sentence"
+        },
+    )

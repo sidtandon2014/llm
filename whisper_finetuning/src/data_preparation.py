@@ -59,11 +59,11 @@ def prepare_dataset(data_args, processor):
     """
     # 1. Load Dataset
     processed_datasets = load_from_disk(data_args.processed_dataset_dir)
-    train_dataset = processed_datasets["train"].to_iterable_dataset()
-    test_dataset= processed_datasets["test"].to_iterable_dataset()
+    train_dataset = processed_datasets["train"].to_iterable_dataset(num_shards=87)
+    test_dataset= processed_datasets["test"].to_iterable_dataset(num_shards=2)
 
     # Preprocessing function
-    def prepare_sample(batch):
+    def prepare_sample(batch, mode):
         batch_audio = batch[data_args.audio_column_name]
 
         if isinstance(batch_audio, list):
@@ -77,18 +77,36 @@ def prepare_dataset(data_args, processor):
         ).input_features
         
         # encode target text to label ids 
-        batch["labels"] = processor.tokenizer(batch[data_args.text_column]).input_ids
+        if mode=="train":
+            tokenized_text = processor.tokenizer(batch[data_args.text_column]
+                                                  ,padding='max_length'
+                                                  ,max_length=train_max_tokens_per_sentence
+                                                  ,truncation=True)
+        elif mode=="eval":
+            tokenized_text = processor.tokenizer(batch[data_args.text_column]
+                                                  ,padding='max_length'
+                                                  ,max_length=eval_max_tokens_per_sentence
+                                                  ,truncation=True)
+        else:
+            raise Exception("Not a valid mode")
+            
+            
+        tokenized_text["input_ids"].masked_fill(tokenized_text.attention_mask.ne(1), -100)
+        batch["labels"] = tokenized_text["input_ids"]
+        
         return batch
 
     # Apply preprocessing
     train_dataset = train_dataset.map(
         prepare_sample,
         remove_columns=[data_args.audio_column_name,data_args.text_column] ,
+        fn_kwargs={"mode": "train"}
     )
 
     test_dataset = test_dataset.map(
         prepare_sample,
         remove_columns=[data_args.audio_column_name,data_args.text_column] ,
+        fn_kwargs={"mode": "eval"}
     )
     # vectorized_datasets.save_to_disk(data_args.vectorized_dataset_dir)
     return train_dataset, test_dataset

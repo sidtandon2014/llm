@@ -26,6 +26,7 @@ MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT: int = 100000
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
     processor: Any
+    data_args: DataTrainingArguments
 
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         # split inputs and labels since they have to be of different lengths and need different padding methods
@@ -35,15 +36,20 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         batch["input_features"] = torch.squeeze(batch["input_features"])
         
         # get the tokenized label sequences
-        label_features = [{"input_ids": feature["labels"]} for feature in features]
-        # pad the labels to max length
-        labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
+        # label_features = [{"input_ids": feature["labels"]} for feature in features]
+        
+        # labels_batch = self.processor.tokenizer.pad(label_features, return_tensors="pt")
+        # labels_batch = self.processor.tokenizer.pad(label_features
+        #                                             ,return_tensors="pt")
 
         # replace padding with -100 to ignore loss correctly
-        labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
+        # labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
+        # labels = labels_batch["input_ids"]
 
         # if bos token is appended in previous tokenization step,
         # cut bos token here as it's append later anyways
+        
+        labels = torch.tensor([feature["labels"] for feature in features])
         if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
 
@@ -54,9 +60,9 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         else:
             rank = 0
         
-        if rank ==0:
-            logger.debug(f"Shape of input_features: {batch['input_features'].shape}")
-            logger.debug(f"shape of labels: {batch['labels'].shape}")
+        # if rank ==0:
+        logger.debug(f"Rank: {rank} Shape of input_features: {batch['input_features'].shape}")
+        logger.debug(f"Rank: {rank} shape of labels: {batch['labels'].shape}")
             
         return batch
 
@@ -89,7 +95,7 @@ def main():
     # eval_dataset = vectorized_datasets["test"]
     
     # 6. Define data collator
-    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
+    data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor, data_args=data_args)
 
     # 7. Define evaluation metric
     metric = evaluate.load("wer")
@@ -132,7 +138,7 @@ def main():
         train_result = trainer.train(resume_from_checkpoint=last_checkpoint)
         
         # Dump memory profiling snapshot
-        torch.cuda.memory._dump_snapshot("profile.pkl")
+        torch.cuda.memory._dump_snapshot("profile_train.pkl")
         # Stop memroy profiling
         torch.cuda.memory._record_memory_history(enabled=None)
         
@@ -146,11 +152,17 @@ def main():
     # 10. Evaluate
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
+        # For Memory profiling
+        torch.cuda.memory._record_memory_history(max_entries=100000)
         metrics = trainer.evaluate(
             metric_key_prefix="eval",
             max_length=training_args.generation_max_length,
             num_beams=training_args.generation_num_beams,
         )
+        # Dump memory profiling snapshot
+        torch.cuda.memory._dump_snapshot("profile_inf.pkl")
+        # Stop memroy profiling
+        torch.cuda.memory._record_memory_history(enabled=None)
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
