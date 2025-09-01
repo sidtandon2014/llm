@@ -70,32 +70,33 @@ def prepare_dataset(data_args, processor):
             audio_array = [x["array"] for x in batch_audio]
         else:
             audio_array = batch_audio["array"]
-        
+
         # compute log-Mel input features from input audio array 
         batch["input_features"] = processor.feature_extractor(
             audio_array, sampling_rate=data_args.sampling_rate
         ).input_features
-        
+
         # encode target text to label ids 
         if mode=="train":
             tokenized_text = processor.tokenizer(batch[data_args.text_column]
-                                                  ,padding='max_length'
-                                                  ,max_length=train_max_tokens_per_sentence
-                                                  ,truncation=True)
+                                                ,padding='max_length'
+                                                ,max_length=data_args.train_max_tokens_per_sentence
+                                                ,truncation=True
+                                                ,return_tensors="pt")
         elif mode=="eval":
             tokenized_text = processor.tokenizer(batch[data_args.text_column]
-                                                  ,padding='max_length'
-                                                  ,max_length=eval_max_tokens_per_sentence
-                                                  ,truncation=True)
+                                                ,padding='max_length'
+                                                ,max_length=data_args.eval_max_tokens_per_sentence
+                                                ,truncation=True
+                                                ,return_tensors="pt")
         else:
             raise Exception("Not a valid mode")
-            
-            
+
+
         tokenized_text["input_ids"].masked_fill(tokenized_text.attention_mask.ne(1), -100)
         batch["labels"] = tokenized_text["input_ids"]
-        
-        return batch
 
+        return batch
     # Apply preprocessing
     train_dataset = train_dataset.map(
         prepare_sample,

@@ -128,7 +128,7 @@ class DataTrainingArguments:
         },
     )
     train_max_tokens_per_sentence: int = field(
-        default=40,
+        default=32,
         metadata={
             "help": "MAximum tokens in a sentence"
         },

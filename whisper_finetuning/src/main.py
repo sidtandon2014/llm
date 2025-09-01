@@ -49,7 +49,8 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         # if bos token is appended in previous tokenization step,
         # cut bos token here as it's append later anyways
         
-        labels = torch.tensor([feature["labels"] for feature in features])
+        labels = torch.stack([feature["labels"] for feature in features])
+        labels = torch.squeeze(labels)
         if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
 
