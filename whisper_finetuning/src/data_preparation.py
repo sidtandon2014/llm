@@ -95,6 +95,7 @@ def prepare_dataset(data_args, processor):
 
         tokenized_text["input_ids"].masked_fill(tokenized_text.attention_mask.ne(1), -100)
         batch["labels"] = tokenized_text["input_ids"]
+        batch["attention_mask"] = tokenized_text["attention_mask"]
 
         return batch
     # Apply preprocessing

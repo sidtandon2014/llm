@@ -1,4 +1,6 @@
 import logging
+# from accelerate.logging import get_logger
+
 import sys
 import os
 from dataclasses import dataclass, field
@@ -51,10 +53,14 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         
         labels = torch.stack([feature["labels"] for feature in features])
         labels = torch.squeeze(labels)
+        
+        att_mask = torch.stack([feature["attention_mask"] for feature in features])
+        att_mask = torch.squeeze(att_mask)
         if (labels[:, 0] == self.processor.tokenizer.bos_token_id).all().cpu().item():
             labels = labels[:, 1:]
 
         batch["labels"] = labels
+        batch["attention_mask"] = att_mask
         
         if dist.is_initialized():
             rank = dist.get_rank()
@@ -64,6 +70,7 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         # if rank ==0:
         logger.debug(f"Rank: {rank} Shape of input_features: {batch['input_features'].shape}")
         logger.debug(f"Rank: {rank} shape of labels: {batch['labels'].shape}")
+        logger.debug(f"Rank: {rank} shape of attention mask: {batch['attention_mask'].shape}")
             
         return batch
 
@@ -74,11 +81,16 @@ def main():
     model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     
     # 2. Setup logging
+    log_file_path = f"{__name__}.log"
+    # sys.stdout = open(log_file_path, 'a') # 'a' for append mode
+    # sys.stderr = open(log_file_path, 'a')
+    
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
         handlers=[logging.StreamHandler(sys.stdout)
-                 ,logging.FileHandler(f"{__name__}.log")],
+                 ,logging.FileHandler(log_file_path)
+                 ],
     )
     log_level = training_args.get_process_log_level()
     logger.setLevel(log_level)
@@ -133,15 +145,15 @@ def main():
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         
         # For Memory profiling
-        torch.cuda.memory._record_memory_history(max_entries=100000)
+        # torch.cuda.memory._record_memory_history(max_entries=100000)
         
         # Train model
         train_result = trainer.train(resume_from_checkpoint=last_checkpoint)
         
         # Dump memory profiling snapshot
-        torch.cuda.memory._dump_snapshot("profile_train.pkl")
+        # torch.cuda.memory._dump_snapshot("profile_train.pkl")
         # Stop memroy profiling
-        torch.cuda.memory._record_memory_history(enabled=None)
+        # torch.cuda.memory._record_memory_history(enabled=None)
         
         trainer.save_model()
 
@@ -154,16 +166,11 @@ def main():
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
         # For Memory profiling
-        torch.cuda.memory._record_memory_history(max_entries=100000)
         metrics = trainer.evaluate(
             metric_key_prefix="eval",
             max_length=training_args.generation_max_length,
             num_beams=training_args.generation_num_beams,
         )
-        # Dump memory profiling snapshot
-        torch.cuda.memory._dump_snapshot("profile_inf.pkl")
-        # Stop memroy profiling
-        torch.cuda.memory._record_memory_history(enabled=None)
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 

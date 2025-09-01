@@ -1,6 +1,6 @@
-# Whisper Large Fine-Tuning with LoRA
+# Whisper Large Fine-Tuning 
 
-This project provides a modularized codebase to fine-tune the `openai/whisper-large-v3` model on the Common Voice 11.0 dataset using Parameter-Efficient Fine-Tuning (PEFT) with LoRA.
+This project fine-tune the `openai/whisper-large-v3` model on the Common Voice 11.0 dataset .
 
 The codebase is built using the Hugging Face ecosystem (`transformers`, `datasets`, `accelerate`, `peft`) and is optimized for multi-GPU training on a single node.
 
