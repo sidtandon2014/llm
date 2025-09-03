@@ -19,7 +19,7 @@ collator = DataCollatorSpeechSeq2SeqWithPadding(processor, data_args)
 
 num_rows_to_get = 2
 first_n_rows = []
-for i, example in enumerate(train_ds):
+for i, example in enumerate(eval_ds):
     if i >= num_rows_to_get:
         break
     first_n_rows.append(example)
@@ -29,5 +29,6 @@ result = collator(first_n_rows)
 assert result["input_features"].shape == (num_rows_to_get, 128, 3000), "Input features are not in right shape"
 assert result["labels"].shape == (num_rows_to_get,data_args.train_max_tokens_per_sentence), "Labels are not in right shape"
 
+print(result)
 print(f"input_features shapes: {result["input_features"].shape}")
 print(f"labels shapes: {result["labels"].shape}")

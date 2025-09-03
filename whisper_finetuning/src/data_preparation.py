@@ -59,8 +59,8 @@ def prepare_dataset(data_args, processor):
     """
     # 1. Load Dataset
     processed_datasets = load_from_disk(data_args.processed_dataset_dir)
-    train_dataset = processed_datasets["train"].to_iterable_dataset(num_shards=87)
-    test_dataset= processed_datasets["test"].to_iterable_dataset(num_shards=2)
+    train_dataset = processed_datasets["train"].to_iterable_dataset(num_shards=87) #.take(100)
+    test_dataset= processed_datasets["test"].to_iterable_dataset(num_shards=8) #.take(100)
 
     # Preprocessing function
     def prepare_sample(batch, mode):
@@ -95,7 +95,7 @@ def prepare_dataset(data_args, processor):
 
         tokenized_text["input_ids"].masked_fill(tokenized_text.attention_mask.ne(1), -100)
         batch["labels"] = tokenized_text["input_ids"]
-        batch["attention_mask"] = tokenized_text["attention_mask"]
+        # batch["attention_mask"] = tokenized_text["attention_mask"]
 
         return batch
     # Apply preprocessing
