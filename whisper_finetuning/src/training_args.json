@@ -11,16 +11,16 @@
     "bf16_full_eval":true,
     "gradient_checkpointing":true,
     "save_strategy":"steps",
-    "save_steps":400,
+    "save_steps":200,
     "save_total_limit":5,
     "accelerator_config":{"dispatch_batches":true,"split_batches":false},
-
     "warmup_ratio":0.03,
+    
     "eval_strategy":"steps",
     "per_device_eval_batch_size":32,
     "predict_with_generate":true,
     "generation_max_length":50,
-    "eval_steps":400,
+    "eval_steps":200,
     "do_eval":true,
     "eval_on_start":false,
 
@@ -38,6 +38,6 @@
 
     "dataloader_num_workers": 8,
     "dataloader_pin_memory":true,
-    "dataloader_persistent_workers": true,
+    "dataloader_persistent_workers": false,
     "dataloader_drop_last": true
 }

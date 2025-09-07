@@ -1,11 +1,12 @@
 import logging
 # from accelerate.logging import get_logger
-
+import gc
 
 import sys
 import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
+import random
 
 import evaluate
 import torch
@@ -24,7 +25,7 @@ from training_args import DataTrainingArguments, ModelArguments
 from model_utils import load_model_and_processor
 from data_preparation import prepare_dataset
 from profiling import ProfilerCallback
-from utils import display_ram_usage
+from utils import display_ram_usage, MemoryCleaningCallback
 
 logger = logging.getLogger(__name__)
 MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT: int = 100000
@@ -146,9 +147,26 @@ def main():
         pred_str = processor.batch_decode(pred_ids[:,:training_args.generation_max_length], skip_special_tokens=True, group_tokens=False)
         label_str = processor.batch_decode(label_ids[:,:training_args.generation_max_length], skip_special_tokens=True, group_tokens=False)
 
-        logger.debug("Batch decoded")
+        if rank == 0:
+            NUM_SAMPLES_2_LOG = 2
+            total_samples = len(pred_str)
+            for _ in range(NUM_SAMPLES_2_LOG):
+                index = random.randrange(0, total_samples)
+            
+                logger.debug(f"Logging index: {index}")
+                logger.debug(f"Predicted Ids: {pred_ids[index,:training_args.generation_max_length]}")
+                logger.debug(f"Predicted String: {pred_str[index]}")
+
+                logger.debug(f"Label Ids: {label_ids[index,:training_args.generation_max_length]}")
+                logger.debug(f"Label String: {label_str[index]}")
+            
+            logger.debug("Batch decoded")
+        
         wer = 100 * metric.compute(predictions=pred_str, references=label_str)
         logger.debug(f"Rank: {rank}, wer: {wer}")
+        del pred_str, label_str, pred_ids, label_ids, pred
+        gc.collect()
+        torch.cuda.empty_cache()
         return {"wer": wer}
 
     # 8. Instantiate Trainer
@@ -160,7 +178,10 @@ def main():
         data_collator=data_collator,
         compute_metrics=compute_metrics,
         tokenizer=processor,
-        # callbacks=[ProfilerCallback(output_dir=training_args.output_dir)]
+        callbacks=[
+            MemoryCleaningCallback()
+            # ProfilerCallback(output_dir=training_args.output_dir)
+        ]
     )
 
     # 9. Start training

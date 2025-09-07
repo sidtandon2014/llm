@@ -20,3 +20,4 @@ librosa
 # Environment related
 python-dotenv
 tensorboardX==2.6.4
+tensorboard==2.20.0

@@ -30,5 +30,6 @@ assert result["input_features"].shape == (num_rows_to_get, 128, 3000), "Input fe
 assert result["labels"].shape == (num_rows_to_get,data_args.train_max_tokens_per_sentence), "Labels are not in right shape"
 
 print(result)
+print(processor.batch_decode(result["labels"], skip_special_tokens=False, group_tokens=False))
 print(f"input_features shapes: {result["input_features"].shape}")
 print(f"labels shapes: {result["labels"].shape}")
