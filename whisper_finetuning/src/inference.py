@@ -1,7 +1,9 @@
 # WIP
 import os
 import torch
+import pandas as pd
 from pathlib import Path
+
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch, Accelerator
 from transformers import (
     AutoConfig
@@ -9,6 +11,7 @@ from transformers import (
     , AutoTokenizer
     , AutoProcessor
     , HfArgumentParser
+    , GenerationConfig
 )
 from torch.utils.data import DataLoader
 from datasets import load_from_disk
@@ -31,7 +34,9 @@ class InfDataCollatorSpeechSeq2SeqWithPadding:
         if len(batch["input_features"].shape) == 2:
             batch["input_features"] = torch.unsqueeze(batch["input_features"], 0)
         
-        batch["target"] = torch.stack([feature[self.data_args.text_column] for feature in features])
+        sentences = [feature[self.data_args.text_column] for feature in features]
+        batch["target"] = sentences
+        # batch["target"] = torch.stack([feature[self.data_args.text_column] for feature in features])
         return batch
 
 def main():
@@ -40,7 +45,9 @@ def main():
     parser = HfArgumentParser((DataTrainingArguments, ModelArguments))
     data_args, model_args = parser.parse_args_into_dataclasses()
     # checkpoint_path = os.path.join(Path(__file__).resolve().parent, "/output/checkpoint-1000/",)
-    checkpoint_path = os.path.join(Path(__file__).resolve().parent, model_args.model_name_or_path)
+    checkpoint_path = os.path.join(Path(__file__).resolve().parent.parent, model_args.model_name_or_path)
+    
+    print(checkpoint_path)
     if not os.path.isdir(checkpoint_path):
         raise Exception("model_name_or_path should be a checkpoint directory")
 
@@ -54,13 +61,11 @@ def main():
                         )
 
     model = WhisperForConditionalGeneration.from_pretrained(model_path
-                                                            ,config)
+                                                            ,config=config)
 
     processor = AutoProcessor.from_pretrained(checkpoint_path)
+    generation_config = GenerationConfig.from_pretrained(checkpoint_path)
     data_collator = InfDataCollatorSpeechSeq2SeqWithPadding(processor, data_args)
-
-    test_dataset = load_from_disk(data_args.processed_dataset_dir)["test"]
-    # test_dataset= processed_datasets["test"].to_iterable_dataset() #.take(100)
 
     # Preprocessing function
     def prepare_sample(batch):
@@ -76,32 +81,47 @@ def main():
             audio_array, sampling_rate=data_args.sampling_rate
         ).input_features
 
-        return batch["input_features"]
+        return batch
 
-
-    test_dataset = test_dataset.map(
-        prepare_sample,
-        remove_columns=[data_args.audio_column_name]
-    ).set_format("torch")
+    with accelerator.main_process_first():
+        test_dataset = load_from_disk(data_args.processed_dataset_dir)["test"]
+        test_dataset = test_dataset.select(range(100)).map(
+            prepare_sample,
+            remove_columns=[data_args.audio_column_name],
+            batched=True
+        )
+        test_dataset.set_format(type="torch",columns=["input_features","sentence"])
 
     data_loader = DataLoader(test_dataset, batch_size=2, shuffle=False, collate_fn=data_collator)
 
     model,data_loader  = accelerator.prepare(model, data_loader)
 
-    result = []
+    all_predictions = []
+    all_references = []
     for batch  in data_loader:
-        input_features, target = batch
-        print(input_features, target)
-        print(input_features.shape, target.shape)
-        print(input_features.device, target.device)
-        # with torch.no_grad():
-        #     output_ids = model.generate(**input_features, max_new_tokens=50)
+        print(batch["input_features"].shape)
+        with torch.no_grad():
+            generated_ids  = model.generate(batch["input_features"].to(accelerator.device)
+                                            ,max_new_tokens=50)
         
-        # if accelerator.is_main_process:
-        #     result.extend((
-        #         processor.tokenizer.decode(output_ids, skip_special_tokens=True)
-        #         ,target
-        #     ))
+        predictions = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        # Gather predictions and references
+        all_predictions.extend(predictions)
+        all_references.extend(batch["target"])
+       
+    # 4. Gather results from all processes
+    gathered_predictions = accelerator.gather_for_metrics(all_predictions)
+    gathered_references = accelerator.gather_for_metrics(all_references)
+    
+    # Now you can calculate metrics on the main process
+    if accelerator.is_main_process:
+        print(gathered_predictions,gathered_references)
+        wer_metric = load("wer")
+        wer = wer_metric.compute(predictions=gathered_predictions, references=gathered_references)
+        print(f"WER: {wer}")
+        
+        results = pd.DataFrame(zip(gathered_predictions, gathered_references), columns=["predictions","references"])
+        results.to_csv(os.path.join(checkpoint_path, "final_results.csv", index=False))
     # Now you can proceed with inference
 
 
