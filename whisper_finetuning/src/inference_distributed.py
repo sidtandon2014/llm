@@ -3,11 +3,8 @@ import os
 import torch
 import pandas as pd
 from pathlib import Path
-from tqdm import tqdm
-from accelerate import init_empty_weights, load_checkpoint_and_dispatch, Accelerator
-from torch.nn.parallel import DistributedDataParallel
-import evaluate
 
+from accelerate import init_empty_weights, load_checkpoint_and_dispatch, Accelerator
 from transformers import (
     AutoConfig
     , WhisperForConditionalGeneration
@@ -37,13 +34,14 @@ class InfDataCollatorSpeechSeq2SeqWithPadding:
         if len(batch["input_features"].shape) == 2:
             batch["input_features"] = torch.unsqueeze(batch["input_features"], 0)
         
-        # batch["input_features"] = batch["input_features"].to(torch.bfloat16)
+        batch["input_features"] = batch["input_features"].to(torch.bfloat16)
         sentences = [feature[self.data_args.text_column] for feature in features]
         batch["target"] = sentences
         # batch["target"] = torch.stack([feature[self.data_args.text_column] for feature in features])
         return batch
 
 def main():
+    # 1. Initialize Accelerate with DeepSpeed
     accelerator = Accelerator()
     parser = HfArgumentParser((DataTrainingArguments, ModelArguments))
     data_args, model_args = parser.parse_args_into_dataclasses()
@@ -64,8 +62,7 @@ def main():
                         )
 
     model = WhisperForConditionalGeneration.from_pretrained(model_path
-                                                            ,config=config
-                                                           ) #.to("cuda:0")
+                                                            ,config=config)
 
     processor = AutoProcessor.from_pretrained(checkpoint_path)
     generation_config = GenerationConfig.from_pretrained(checkpoint_path)
@@ -87,34 +84,28 @@ def main():
 
         return batch
 
-    test_dataset = load_from_disk(data_args.processed_dataset_dir)["test"]
     with accelerator.main_process_first():
-        test_dataset = test_dataset.map(
+        test_dataset = load_from_disk(data_args.processed_dataset_dir)["test"]
+        test_dataset = test_dataset.select(range(100)).map(
             prepare_sample,
             remove_columns=[data_args.audio_column_name],
             batched=True
         )
-    test_dataset.set_format(type="torch",columns=["input_features","sentence"])
+        test_dataset.set_format(type="torch",columns=["input_features","sentence"])
 
-    data_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=data_collator)
+    data_loader = DataLoader(test_dataset, batch_size=2, shuffle=False, collate_fn=data_collator)
 
     model,data_loader  = accelerator.prepare(model, data_loader)
-    
+
     all_predictions = []
     all_references = []
-    for batch in data_loader:
-        input_features = batch["input_features"] #.to("cuda:0")
-        print(input_features.shape)
+    for batch  in data_loader:
+        print(batch["input_features"].shape)
         with torch.no_grad():
-            if isinstance(model, DistributedDataParallel):
-                generated_ids  = model.module.generate(input_features
+            generated_ids  = model.generate(batch["input_features"].to(accelerator.device)
                                             ,max_new_tokens=50)
-            else:
-                generated_ids  = model.generate(input_features
-                                            ,max_new_tokens=50)
-            
         
-        predictions = processor.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        predictions = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
         # Gather predictions and references
         all_predictions.extend(predictions)
         all_references.extend(batch["target"])
@@ -126,20 +117,12 @@ def main():
     # Now you can calculate metrics on the main process
     if accelerator.is_main_process:
         print(gathered_predictions,gathered_references)
-        wer_metric = evaluate.load("wer")
+        wer_metric = load("wer")
         wer = wer_metric.compute(predictions=gathered_predictions, references=gathered_references)
         print(f"WER: {wer}")
         
         results = pd.DataFrame(zip(gathered_predictions, gathered_references), columns=["predictions","references"])
-        results.to_csv(os.path.join(checkpoint_path, "final_results.csv"), index=False)
-        
-#     print(all_predictions,all_references)
-#     wer_metric = evaluate.load("wer")
-#     wer = wer_metric.compute(predictions=all_predictions, references=all_references)
-#     print(f"WER: {wer}")
-
-#     results = pd.DataFrame(zip(all_predictions, all_references), columns=["predictions","references"])
-#     results.to_csv(os.path.join(checkpoint_path, "final_results_single_gpu.csv", index=False))
+        results.to_csv(os.path.join(checkpoint_path, "final_results.csv", index=False))
     # Now you can proceed with inference
 
 
