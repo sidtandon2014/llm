@@ -95,14 +95,21 @@ mkdir output
 ```
 
 ## How to run Inference
-The inference process is launched via the `run_inference.sh` script. 
-- Make sure you have a fine-tuned model checkpoint saved in the `./checkpoints` directory.
-- Place the audio file you want to transcribe in the root directory of the project and name it `test.wav`.
-- You can change the path to the audio file and the model checkpoint in the `run_inference.sh` script.
+The inference process is launched via the `run_inference.sh` script. There are two ways to do inference
+1. **Using hugging face inference**
+    - This will require running ```zero_to_fp32.py``` file present inside specific checkpoint directory if you dont have 'pytorch_model.bin' file/ directory
+    ```bash
+    cd [checkpoint_path]
+    zero_to_fp32.py . pytorch_model.bin
+    cd ..
+    ./run_inference.sh
+    ```
 
-```bash
-./run_inference.sh
-```
+2. **Using deep speed inference**
+    - WIP
+    - This is more advanced and will not require merging the shards 
+
+
 
 ### Customization
 
@@ -125,7 +132,15 @@ The script is pre-configured with sensible defaults for fine-tuning on the Engli
 
 ## Metrics
 
-### Training metrics
+### Training metrics (final checkpoint)
+```
+GPUs: 8xL4
+FLOPs/step: 3.7PFLOPs
+train_loss:0.10
+eval_loss:0.12
+eval_samples_per_second:1.028
+eval_steps_per_second:0.004
+```
 
 
 ### Business Metrics
