@@ -129,3 +129,6 @@ The script is pre-configured with sensible defaults for fine-tuning on the Engli
 
 
 ### Business Metrics
+```
+wer: .12
+```
