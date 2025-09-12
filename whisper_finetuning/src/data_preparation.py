@@ -12,54 +12,55 @@ def load_raw_dataset(data_args):
     """
     auth_token = os.getenv("token")
     processed_dataset_path = data_args.processed_dataset_dir
-    if not os.path.exists(processed_dataset_path):
-        raw_datasets = DatasetDict()
-        raw_datasets["train"] = load_dataset(
-            data_args.dataset_name,
-            data_args.dataset_config_name,
-            split="train",
-            cache_dir=data_args.dataset_cache_dir,
-            token=auth_token,
-            trust_remote_code=True
-        )
-        raw_datasets["test"] = load_dataset(
-            data_args.dataset_name,
-            data_args.dataset_config_name,
-            split="test",
-            cache_dir=data_args.dataset_cache_dir,
-            token=auth_token,
-            trust_remote_code=True
-        )
+    if os.path.exists(processed_dataset_path):
+        return
+    raw_datasets = DatasetDict()
+    raw_datasets["train"] = load_dataset(
+        data_args.dataset_name,
+        data_args.dataset_config_name,
+        split="train",
+        cache_dir=data_args.dataset_cache_dir,
+        token=auth_token,
+        trust_remote_code=True
+    )
+    raw_datasets["test"] = load_dataset(
+        data_args.dataset_name,
+        data_args.dataset_config_name,
+        split="test",
+        cache_dir=data_args.dataset_cache_dir,
+        token=auth_token,
+        trust_remote_code=True
+    )
 
-        def is_audio_in_length_range(sample):
-            length = sample["array"].shape[0] / 16000
-            return length < data_args.max_duration_in_seconds 
+    def is_audio_in_length_range(sample):
+        length = sample["array"].shape[0] / 16000
+        return length < data_args.max_duration_in_seconds 
 
-        raw_datasets = raw_datasets.remove_columns(
-            ["accent", "age", "client_id", "down_votes", "gender", "locale", "path", "segment", "up_votes"]
-        )
+    raw_datasets = raw_datasets.remove_columns(
+        ["accent", "age", "client_id", "down_votes", "gender", "locale", "path", "segment", "up_votes"]
+    )
 
-        # Resample audio to 16kHz
-        raw_datasets = raw_datasets.cast_column(data_args.audio_column_name, Audio(sampling_rate=16000))
+    # Resample audio to 16kHz
+    raw_datasets = raw_datasets.cast_column(data_args.audio_column_name, Audio(sampling_rate=16000))
 
-        # Calculate length 
-        # There are only 3 samples that will be removed. Its be4tter to process it
-        # But in case there is a dataset that has lot of such variation
-        # Uncomment below lines
-        # raw_datasets = raw_datasets.filter(
-        #     is_audio_in_length_range,
-        #     input_columns=[data_args.audio_column_name],
-        #     num_proc=4
-        #     )
-        
-        raw_datasets.save_to_disk(processed_dataset_path)
-        return None
+    # Calculate length 
+    # There are only 3 samples that will be removed. Its be4tter to process it
+    # But in case there is a dataset that has lot of such variation
+    # Uncomment below lines
+    # raw_datasets = raw_datasets.filter(
+    #     is_audio_in_length_range,
+    #     input_columns=[data_args.audio_column_name],
+    #     num_proc=4
+    #     )
+
+    raw_datasets.save_to_disk(processed_dataset_path)
 
 def prepare_dataset(data_args, processor):
     """
     Loads and preprocesses the dataset for Whisper fine-tuning.
     """
     # 1. Load Dataset
+    load_raw_dataset(data_args)
     processed_datasets = load_from_disk(data_args.processed_dataset_dir)
     train_dataset = processed_datasets["train"].to_iterable_dataset(num_shards=87) #.take(100)
     test_dataset= processed_datasets["test"].to_iterable_dataset(num_shards=8) #.take(100)
