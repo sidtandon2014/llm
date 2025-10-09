@@ -4,7 +4,7 @@ from transformers import (
 )
 from data_preparation import prepare_dataset
 from main import DataCollatorSpeechSeq2SeqWithPadding
-from training_args import DataTrainingArguments, ModelArguments
+from data_classes import DataTrainingArguments, ModelArguments
 from transformers import WhisperProcessor,WhisperForConditionalGeneration
 
 processor = WhisperProcessor.from_pretrained("openai/whisper-large-v3")

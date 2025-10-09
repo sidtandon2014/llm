@@ -11,6 +11,9 @@ class ModelArguments:
         default="openai/whisper-large-v3",
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
+    is_model_id: bool = field(
+        default=True, metadata={"help": "Whether the model_name_or_path is a model_id or path"}
+    )
     config_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
     )
@@ -44,7 +47,25 @@ class ModelArguments:
     load_in_4bit: bool = field(
         default=False, metadata={"help": "Whether to load the model in 4bit."}
     )
+    
 
+@dataclass
+class InferenceArguments:
+    """
+    Arguments pertaining to inferncing
+    """
+    quantization_algo: Optional[str] = field(
+        default='bnb', metadata={"help": "Quantization algorithm/ library to use. Options: None, 'bnb','gptq'"}
+    )
+    load_in_8bit: bool = field(
+        default=True, metadata={"help": "BitsandBytes arguments. Whether to load the model in 8bit."}
+    )
+    load_in_4bit: bool = field(
+        default=False, metadata={"help": "BitsandBytes arguments. Whether to load the model in 4bit."}
+    )
+    batch_size: int = field(
+        default=32, metadata={"help": "Default batch size during inference"}
+    )
 
 @dataclass
 class DataTrainingArguments:

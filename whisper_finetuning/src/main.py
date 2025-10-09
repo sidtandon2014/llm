@@ -21,7 +21,7 @@ from transformers.trainer_utils import get_last_checkpoint
 import torch.distributed as dist
 from accelerate import Accelerator
 
-from training_args import DataTrainingArguments, ModelArguments
+from data_classes import DataTrainingArguments, ModelArguments
 from model_utils import load_model_and_processor
 from data_preparation import prepare_dataset
 from profiling import ProfilerCallback

@@ -20,7 +20,9 @@ from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
-from training_args import DataTrainingArguments, ModelArguments
+
+from data_classes import DataTrainingArguments, ModelArguments, InferenceArguments
+from model_utils import load_model_and_processor
 
 @dataclass
 class InfDataCollatorSpeechSeq2SeqWithPadding:
@@ -45,30 +47,12 @@ class InfDataCollatorSpeechSeq2SeqWithPadding:
 
 def main():
     accelerator = Accelerator()
-    parser = HfArgumentParser((DataTrainingArguments, ModelArguments))
-    data_args, model_args = parser.parse_args_into_dataclasses()
+    parser = HfArgumentParser((DataTrainingArguments, ModelArguments, InferenceArguments))
+    data_args, model_args, inference_args = parser.parse_args_into_dataclasses()
     # checkpoint_path = os.path.join(Path(__file__).resolve().parent, "/output/checkpoint-1000/",)
-    checkpoint_path = os.path.join(Path(__file__).resolve().parent.parent, model_args.model_name_or_path)
-    
-    print(checkpoint_path)
-    if not os.path.isdir(checkpoint_path):
-        raise Exception("model_name_or_path should be a checkpoint directory")
 
-    # 1. Load the model config first
-    config = AutoConfig.from_pretrained(checkpoint_path)
 
-    model_path = os.path.join(checkpoint_path,"pytorch_model.bin")
-    if not os.path.exists(model_path):
-        raise Exception(("pytorch_model.bin not found inside checkpoint directory"),
-                         ("Run ```./zero_to_fp32.py . pytorch_model.bin``` and then run this file")
-                        )
-
-    model = WhisperForConditionalGeneration.from_pretrained(model_path
-                                                            ,config=config
-                                                           ) #.to("cuda:0")
-
-    processor = AutoProcessor.from_pretrained(checkpoint_path)
-    generation_config = GenerationConfig.from_pretrained(checkpoint_path)
+    model, processor = load_model_and_processor(data_args, model_args, inference_args)
     data_collator = InfDataCollatorSpeechSeq2SeqWithPadding(processor, data_args)
 
     # Preprocessing function
@@ -96,7 +80,10 @@ def main():
         )
     test_dataset.set_format(type="torch",columns=["input_features","sentence"])
 
-    data_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=data_collator)
+    data_loader = DataLoader(test_dataset
+                             , batch_size=inference_args.batch_size
+                             , shuffle=False
+                             , collate_fn=data_collator)
 
     model,data_loader  = accelerator.prepare(model, data_loader)
     
@@ -104,7 +91,7 @@ def main():
     all_references = []
     for batch in data_loader:
         input_features = batch["input_features"] #.to("cuda:0")
-        print(input_features.shape)
+        # print(input_features.shape)
         with torch.no_grad():
             if isinstance(model, DistributedDataParallel):
                 generated_ids  = model.module.generate(input_features
