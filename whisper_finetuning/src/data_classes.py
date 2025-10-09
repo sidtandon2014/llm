@@ -41,11 +41,14 @@ class ModelArguments:
     freeze_feature_encoder: bool = field(
         default=True, metadata={"help": "Whether to freeze the feature encoder layers of the model."}
     )
-    load_in_8bit: bool = field(
+    train_bnb_load_in_8bit: bool = field(
         default=False, metadata={"help": "Whether to load the model in 8bit."}
     )
-    load_in_4bit: bool = field(
+    train_bnb_load_in_4bit: bool = field(
         default=False, metadata={"help": "Whether to load the model in 4bit."}
+    )
+    is_train: bool = field(
+        default=True, metadata={"help": "Whether to train or inference"}
     )
     
 
@@ -57,10 +60,10 @@ class InferenceArguments:
     quantization_algo: Optional[str] = field(
         default='bnb', metadata={"help": "Quantization algorithm/ library to use. Options: None, 'bnb','gptq'"}
     )
-    load_in_8bit: bool = field(
+    inf_bnb_load_in_8bit: bool = field(
         default=True, metadata={"help": "BitsandBytes arguments. Whether to load the model in 8bit."}
     )
-    load_in_4bit: bool = field(
+    inf_bnb_load_in_4bit: bool = field(
         default=False, metadata={"help": "BitsandBytes arguments. Whether to load the model in 4bit."}
     )
     batch_size: int = field(

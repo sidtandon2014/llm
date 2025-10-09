@@ -11,4 +11,7 @@ accelerate launch \
     --model_name_or_path output/checkpoint-1000/ \
     --is_model_id False \
     --is_train False \
-    > output_inf.log 2>&1
+    --quantization_algo 'bnb' \
+    --inf_bnb_load_in_8bit True \
+    --inf_bnb_load_in_4bit False \
+    > output_8bit_inf.log 2>&1

@@ -41,7 +41,8 @@ def load_model_and_processor(model_args, data_args, inference_args=None):
         
         quantization_config = None
         if inference_args.quantization_algo == "bnb":
-            quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+            quantization_config = BitsAndBytesConfig(load_in_8bit=inference_args.inf_bnb_load_in_8bit
+                                                    ,load_in_4bit=inference_args.inf_bnb_load_in_4bit)
         config = AutoConfig.from_pretrained(checkpoint_path)
         model = WhisperForConditionalGeneration.from_pretrained(model_path
                                                             ,config=config
@@ -59,8 +60,8 @@ def load_model_and_processor(model_args, data_args, inference_args=None):
 
         model = WhisperForConditionalGeneration.from_pretrained(
             model_args.model_name_or_path,
-            load_in_4bit=model_args.load_in_4bit,
-            load_in_8bit=model_args.load_in_8bit,
+            load_in_4bit=model_args.train_bnb_load_in_4bit,
+            load_in_8bit=model_args.train_bnb_load_in_8bit,
             cache_dir=model_args.cache_dir,
             token=auth_token
         )
@@ -75,7 +76,7 @@ def load_model_and_processor(model_args, data_args, inference_args=None):
             , use_cache=True
             , forced_decoder_ids = None
         )
-        if model_args.load_in_4bit or model_args.load_in_8bit:
+        if model_args.train_bnb_load_in_8bit or model_args.train_bnb_load_in_4bit:
             model = prepare_model_for_kbit_training(model)
 
     
