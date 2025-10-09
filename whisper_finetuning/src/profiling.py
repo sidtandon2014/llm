@@ -12,20 +12,9 @@ class ProfilerCallback(TrainerCallback):
         self.profiler = None
         self.output_dir = output_dir
         self.schedule = torch.profiler.schedule(skip_first=1, wait=0, warmup=1, active=2, repeat=1)
-        # Create a profiler context manager that will be active during training
-        self.profiler = profile(
-            activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], # Profile both CPU and GPU
-            schedule=torch.profiler.schedule(skip_first=1, wait=0, warmup=1, active=2, repeat=1), # A schedule for profiling steps
-            on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs/profile'), # Where to save the trace
-            record_shapes=True,
-            with_stack=True,
-            profile_memory=True
-        )
 
     def on_train_begin(self, args, state, control, **kwargs):
         """Starts the profiler when training begins."""
-        print("Starting profiler...")
-        
         # Only profile on the main process (rank 0)
         if dist.is_initialized():
             rank = dist.get_rank()
