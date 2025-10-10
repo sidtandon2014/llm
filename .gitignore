@@ -1,8 +1,1 @@
 whisper_finetuning/.venv/
-whisper_finetuning/cache
-
-whisper_finetuning/.env
-whisper_finetuning/logs/whisper-l4-ft_1102889.1757661039682564486.pt.trace.json
-whisper_finetuning/src/__pycache__/data_preparation.cpython-312.pyc
-whisper_finetuning/src/__pycache__/training_args.cpython-312.pyc
-whisper_finetuning/test.ipynb
