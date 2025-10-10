@@ -52,7 +52,9 @@ def main():
     # checkpoint_path = os.path.join(Path(__file__).resolve().parent, "/output/checkpoint-1000/",)
 
 
-    model, processor = load_model_and_processor(data_args, model_args, inference_args)
+    model, processor = load_model_and_processor(model_args=model_args
+                                                ,data_args=data_args
+                                                ,inference_args)
     data_collator = InfDataCollatorSpeechSeq2SeqWithPadding(processor, data_args)
 
     # Preprocessing function

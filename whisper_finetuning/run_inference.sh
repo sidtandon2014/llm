@@ -13,5 +13,4 @@ accelerate launch \
     --is_train False \
     --quantization_algo 'bnb' \
     --inf_bnb_load_in_8bit True \
-    --inf_bnb_load_in_4bit False \
-    > output_8bit_inf.log 2>&1
+    --inf_bnb_load_in_4bit False > output_8bit_inf.log 2>&1
