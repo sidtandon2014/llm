@@ -30,7 +30,7 @@ def load_model_and_processor(model_args, data_args, inference_args=None):
         checkpoint_path = os.path.join(Path(__file__).resolve().parent.parent, model_args.model_name_or_path)
     
         print(checkpoint_path)
-        if os.path.isdir(checkpoint_path):
+        if not os.path.isdir(checkpoint_path):
             raise Exception("model_name_or_path should be a checkpoint directory")
         
         model_path = os.path.join(checkpoint_path,"pytorch_model.bin")
