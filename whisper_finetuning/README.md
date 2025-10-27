@@ -142,14 +142,8 @@ eval_samples_per_second:1.028
 eval_steps_per_second:0.004
 ```
 
-
-### Business Metrics
-```
-wer: .12
-```
-
 ## Inference
-| Model | Batch size | wer | S | D | I | Time taken (mins) | 
+| Model | Batch size | wer | Substitutions | Deletions | Insertions | Time taken (mins) | 
 |---|---|---|---|---|---|---|
 | Fine tuned Model (No quant)  | 32 | 0.120 | 10.13% | 1.02% | 0.88% | 21.9|
 | Fine tuned Model (BnB: 8bit) | 32 | 0.121 | 10.20% | 1.03% | 0.88% | 30.13| 
