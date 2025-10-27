@@ -147,3 +147,10 @@ eval_steps_per_second:0.004
 ```
 wer: .12
 ```
+
+## Inference
+| Model | Batch size | wer | S | D | I | Time taken (mins) | 
+|---|---|---|---|---|---|---|
+| Fine tuned Model (No quant)  | 32 | 0.120 | 10.13% | 1.02% | 0.88% | 21.9|
+| Fine tuned Model (BnB: 8bit) | 32 | 0.121 | 10.20% | 1.03% | 0.88% | 30.13| 
+| Fine tuned Model (BnB: 4bit) | 32 | 0.124 | 10.39% | 1.10% | 0.90% | 51.7| 
