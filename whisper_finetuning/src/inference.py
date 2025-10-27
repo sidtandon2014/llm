@@ -7,6 +7,7 @@ from tqdm import tqdm
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch, Accelerator
 from torch.nn.parallel import DistributedDataParallel
 import evaluate
+import time
 
 from transformers import (
     AutoConfig
@@ -28,17 +29,18 @@ from model_utils import load_model_and_processor
 class InfDataCollatorSpeechSeq2SeqWithPadding:
     processor: Any
     data_args: DataTrainingArguments
+    model_dtype: Any
 
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         # split inputs and labels since they have to be of different lengths and need different padding methods
         # first treat the audio inputs by simply returning torch tensors
         input_features = [{"input_features": feature["input_features"]} for feature in features]
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
-        batch["input_features"] = torch.squeeze(batch["input_features"])
+        batch["input_features"] = torch.squeeze(batch["input_features"]).to(self.model_dtype)
         
         if len(batch["input_features"].shape) == 2:
             batch["input_features"] = torch.unsqueeze(batch["input_features"], 0)
-        
+            
         # batch["input_features"] = batch["input_features"].to(torch.bfloat16)
         sentences = [feature[self.data_args.text_column] for feature in features]
         batch["target"] = sentences
@@ -55,7 +57,12 @@ def main():
     processor, model = load_model_and_processor(model_args=model_args
                                                 ,data_args=data_args
                                                 ,inference_args=inference_args)
-    data_collator = InfDataCollatorSpeechSeq2SeqWithPadding(processor, data_args)
+    
+    model_dtype = next(model.parameters()).dtype
+    if accelerator.is_main_process:
+        print(f"Model's parameter dtype: {model_dtype}")
+        
+    data_collator = InfDataCollatorSpeechSeq2SeqWithPadding(processor, data_args, model_dtype)
 
     # Preprocessing function
     def prepare_sample(batch):
@@ -91,6 +98,8 @@ def main():
     
     all_predictions = []
     all_references = []
+    time_taken = []
+    start = time.time()
     for batch in data_loader:
         input_features = batch["input_features"] #.to("cuda:0")
         # print(input_features.shape)
@@ -102,11 +111,12 @@ def main():
                 generated_ids  = model.generate(input_features
                                             ,max_new_tokens=50)
             
-        
         predictions = processor.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
         # Gather predictions and references
         all_predictions.extend(predictions)
         all_references.extend(batch["target"])
+    
+    print(f"Time taken: {time.time() - start} secs")
        
     # 4. Gather results from all processes
     gathered_predictions = accelerator.gather_for_metrics(all_predictions)
@@ -114,13 +124,16 @@ def main():
     
     # Now you can calculate metrics on the main process
     if accelerator.is_main_process:
-        print(gathered_predictions,gathered_references)
+        # print(gathered_predictions,gathered_references)
         wer_metric = evaluate.load("wer")
         wer = wer_metric.compute(predictions=gathered_predictions, references=gathered_references)
         print(f"WER: {wer}")
         
         results = pd.DataFrame(zip(gathered_predictions, gathered_references), columns=["predictions","references"])
-        results.to_csv(os.path.join(checkpoint_path, "final_results.csv"), index=False)
+        results.drop_duplicates(inplace=True)
+        results.to_csv(os.path.join(Path(__file__).resolve().parent
+                                    , inference_args.inference_result_file_name)
+                       , index=False)
         
 #     print(all_predictions,all_references)
 #     wer_metric = evaluate.load("wer")

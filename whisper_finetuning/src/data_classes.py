@@ -58,7 +58,7 @@ class InferenceArguments:
     Arguments pertaining to inferncing
     """
     quantization_algo: Optional[str] = field(
-        default='bnb', metadata={"help": "Quantization algorithm/ library to use. Options: None, 'bnb','gptq'"}
+        default=None, metadata={"help": "Quantization algorithm/ library to use. Options: None, 'bnb','gptq'"}
     )
     inf_bnb_load_in_8bit: bool = field(
         default=True, metadata={"help": "BitsandBytes arguments. Whether to load the model in 8bit."}
@@ -68,6 +68,9 @@ class InferenceArguments:
     )
     batch_size: int = field(
         default=32, metadata={"help": "Default batch size during inference"}
+    )
+    inference_result_file_name: Optional[str] = field(
+        default='results.csv', metadata={"help": "Final results file name"}
     )
 
 @dataclass

@@ -41,6 +41,7 @@ def load_model_and_processor(model_args, data_args, inference_args=None):
         
         quantization_config = None
         if inference_args.quantization_algo == "bnb":
+            print("Setting up quantization Configuration")
             quantization_config = BitsAndBytesConfig(load_in_8bit=inference_args.inf_bnb_load_in_8bit
                                                     ,load_in_4bit=inference_args.inf_bnb_load_in_4bit)
         config = AutoConfig.from_pretrained(checkpoint_path)
