@@ -8,14 +8,20 @@ The codebase is built using the Hugging Face ecosystem (`transformers`, `dataset
 
 ```
 whisper_finetuning/
-├── accelerate_config.yaml      # Configuration for multi-GPU training
+├── deep_speed_config.yaml      # Configuration for multi-GPU training
 ├── requirements.txt            # Python dependencies
 ├── run_finetuning.sh           # Main script to launch the training
+├── run_inference.sh            # Main scipt to launch the inferencing
 └── src/
-    ├── data_preparation.py     # Handles dataset loading and preprocessing
-    ├── main.py                 # Main training script orchestrating the process
-    ├── model_utils.py          # Handles model loading, quantization, and LoRA setup
-    └── training_args.py        # Defines custom arguments for model and data
+    ├── data_classes.py           # Data classes definition
+    ├── data_preparation.py       # Handles dataset loading and preprocessing
+    ├── inference.py              # Main code for inferencing using 4bit, 8bit, and fine tuned model
+    ├── main.py                   # Main training script orchestrating the process
+    ├── model_utils.py            # Handles model loading, quantization, and LoRA setup
+    ├── profiling.py              # Helper classes for profiling
+    ├── test_data_preparation.py  # Test cases for data_preparation.py
+    ├── training_args.py          # Defines custom arguments for model and data
+    └── utils.py                  # Helper functions  
 ```
 ## Dataset
 
