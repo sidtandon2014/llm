@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
-from training_args import DataTrainingArguments, ModelArguments
+from data_classes import DataTrainingArguments, ModelArguments
 
 @dataclass
 class InfDataCollatorSpeechSeq2SeqWithPadding:

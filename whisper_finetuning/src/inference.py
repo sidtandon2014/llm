@@ -7,6 +7,7 @@ from tqdm import tqdm
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch, Accelerator
 from torch.nn.parallel import DistributedDataParallel
 import evaluate
+import time
 
 from transformers import (
     AutoConfig
@@ -20,23 +21,26 @@ from torch.utils.data import DataLoader
 from datasets import load_from_disk
 from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass, field
-from training_args import DataTrainingArguments, ModelArguments
+
+from data_classes import DataTrainingArguments, ModelArguments, InferenceArguments
+from model_utils import load_model_and_processor
 
 @dataclass
 class InfDataCollatorSpeechSeq2SeqWithPadding:
     processor: Any
     data_args: DataTrainingArguments
+    model_dtype: Any
 
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         # split inputs and labels since they have to be of different lengths and need different padding methods
         # first treat the audio inputs by simply returning torch tensors
         input_features = [{"input_features": feature["input_features"]} for feature in features]
         batch = self.processor.feature_extractor.pad(input_features, return_tensors="pt")
-        batch["input_features"] = torch.squeeze(batch["input_features"])
+        batch["input_features"] = torch.squeeze(batch["input_features"]).to(self.model_dtype)
         
         if len(batch["input_features"].shape) == 2:
             batch["input_features"] = torch.unsqueeze(batch["input_features"], 0)
-        
+            
         # batch["input_features"] = batch["input_features"].to(torch.bfloat16)
         sentences = [feature[self.data_args.text_column] for feature in features]
         batch["target"] = sentences
@@ -45,31 +49,20 @@ class InfDataCollatorSpeechSeq2SeqWithPadding:
 
 def main():
     accelerator = Accelerator()
-    parser = HfArgumentParser((DataTrainingArguments, ModelArguments))
-    data_args, model_args = parser.parse_args_into_dataclasses()
+    parser = HfArgumentParser((DataTrainingArguments, ModelArguments, InferenceArguments))
+    data_args, model_args, inference_args = parser.parse_args_into_dataclasses()
     # checkpoint_path = os.path.join(Path(__file__).resolve().parent, "/output/checkpoint-1000/",)
-    checkpoint_path = os.path.join(Path(__file__).resolve().parent.parent, model_args.model_name_or_path)
+
+
+    processor, model = load_model_and_processor(model_args=model_args
+                                                ,data_args=data_args
+                                                ,inference_args=inference_args)
     
-    print(checkpoint_path)
-    if not os.path.isdir(checkpoint_path):
-        raise Exception("model_name_or_path should be a checkpoint directory")
-
-    # 1. Load the model config first
-    config = AutoConfig.from_pretrained(checkpoint_path)
-
-    model_path = os.path.join(checkpoint_path,"pytorch_model.bin")
-    if not os.path.exists(model_path):
-        raise Exception(("pytorch_model.bin not found inside checkpoint directory"),
-                         ("Run ```./zero_to_fp32.py . pytorch_model.bin``` and then run this file")
-                        )
-
-    model = WhisperForConditionalGeneration.from_pretrained(model_path
-                                                            ,config=config
-                                                           ) #.to("cuda:0")
-
-    processor = AutoProcessor.from_pretrained(checkpoint_path)
-    generation_config = GenerationConfig.from_pretrained(checkpoint_path)
-    data_collator = InfDataCollatorSpeechSeq2SeqWithPadding(processor, data_args)
+    model_dtype = next(model.parameters()).dtype
+    if accelerator.is_main_process:
+        print(f"Model's parameter dtype: {model_dtype}")
+        
+    data_collator = InfDataCollatorSpeechSeq2SeqWithPadding(processor, data_args, model_dtype)
 
     # Preprocessing function
     def prepare_sample(batch):
@@ -96,15 +89,20 @@ def main():
         )
     test_dataset.set_format(type="torch",columns=["input_features","sentence"])
 
-    data_loader = DataLoader(test_dataset, batch_size=32, shuffle=False, collate_fn=data_collator)
+    data_loader = DataLoader(test_dataset
+                             , batch_size=inference_args.batch_size
+                             , shuffle=False
+                             , collate_fn=data_collator)
 
     model,data_loader  = accelerator.prepare(model, data_loader)
     
     all_predictions = []
     all_references = []
+    time_taken = []
+    start = time.time()
     for batch in data_loader:
         input_features = batch["input_features"] #.to("cuda:0")
-        print(input_features.shape)
+        # print(input_features.shape)
         with torch.no_grad():
             if isinstance(model, DistributedDataParallel):
                 generated_ids  = model.module.generate(input_features
@@ -113,11 +111,12 @@ def main():
                 generated_ids  = model.generate(input_features
                                             ,max_new_tokens=50)
             
-        
         predictions = processor.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
         # Gather predictions and references
         all_predictions.extend(predictions)
         all_references.extend(batch["target"])
+    
+    print(f"Time taken: {time.time() - start} secs")
        
     # 4. Gather results from all processes
     gathered_predictions = accelerator.gather_for_metrics(all_predictions)
@@ -125,13 +124,16 @@ def main():
     
     # Now you can calculate metrics on the main process
     if accelerator.is_main_process:
-        print(gathered_predictions,gathered_references)
+        # print(gathered_predictions,gathered_references)
         wer_metric = evaluate.load("wer")
         wer = wer_metric.compute(predictions=gathered_predictions, references=gathered_references)
         print(f"WER: {wer}")
         
         results = pd.DataFrame(zip(gathered_predictions, gathered_references), columns=["predictions","references"])
-        results.to_csv(os.path.join(checkpoint_path, "final_results.csv"), index=False)
+        results.drop_duplicates(inplace=True)
+        results.to_csv(os.path.join(Path(__file__).resolve().parent
+                                    , inference_args.inference_result_file_name)
+                       , index=False)
         
 #     print(all_predictions,all_references)
 #     wer_metric = evaluate.load("wer")

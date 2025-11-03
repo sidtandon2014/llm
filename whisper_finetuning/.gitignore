@@ -1,3 +1,12 @@
+cache
+.env
+logs/
+src/__pycache__/
+*.ipynb
+*.log
+*.pkl
+.ipynb_checkpoints/
+src/.ipynb_checkpoints
+src/*.csv
 output/
 output_profile/
-*.log

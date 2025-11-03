@@ -11,6 +11,9 @@ class ModelArguments:
         default="openai/whisper-large-v3",
         metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
+    is_model_id: bool = field(
+        default=True, metadata={"help": "Whether the model_name_or_path is a model_id or path"}
+    )
     config_name: Optional[str] = field(
         default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
     )
@@ -38,13 +41,37 @@ class ModelArguments:
     freeze_feature_encoder: bool = field(
         default=True, metadata={"help": "Whether to freeze the feature encoder layers of the model."}
     )
-    load_in_8bit: bool = field(
+    train_bnb_load_in_8bit: bool = field(
         default=False, metadata={"help": "Whether to load the model in 8bit."}
     )
-    load_in_4bit: bool = field(
+    train_bnb_load_in_4bit: bool = field(
         default=False, metadata={"help": "Whether to load the model in 4bit."}
     )
+    is_train: bool = field(
+        default=True, metadata={"help": "Whether to train or inference"}
+    )
+    
 
+@dataclass
+class InferenceArguments:
+    """
+    Arguments pertaining to inferncing
+    """
+    quantization_algo: Optional[str] = field(
+        default=None, metadata={"help": "Quantization algorithm/ library to use. Options: None, 'bnb','gptq'"}
+    )
+    inf_bnb_load_in_8bit: bool = field(
+        default=True, metadata={"help": "BitsandBytes arguments. Whether to load the model in 8bit."}
+    )
+    inf_bnb_load_in_4bit: bool = field(
+        default=False, metadata={"help": "BitsandBytes arguments. Whether to load the model in 4bit."}
+    )
+    batch_size: int = field(
+        default=32, metadata={"help": "Default batch size during inference"}
+    )
+    inference_result_file_name: Optional[str] = field(
+        default='results.csv', metadata={"help": "Final results file name"}
+    )
 
 @dataclass
 class DataTrainingArguments:
