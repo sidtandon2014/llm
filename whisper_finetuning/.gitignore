@@ -1,6 +1,12 @@
 cache
 .env
-logs/whisper-l4-ft_1102889.1757661039682564486.pt.trace.json
-src/__pycache__/data_preparation.cpython-312.pyc
-src/__pycache__/training_args.cpython-312.pyc
-test.ipynb
+logs/
+src/__pycache__/
+*.ipynb
+*.log
+*.pkl
+.ipynb_checkpoints/
+src/.ipynb_checkpoints
+src/*.csv
+output/
+output_profile/
